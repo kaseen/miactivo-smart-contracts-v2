@@ -29,7 +29,9 @@ describe('PropertyToken', () => {
         const { TokenContract, tokenAddress, user1, premint } = await loadFixture(deployFreshContract);
 
         const amount = 100;
-        await TokenContract.userBuysTokens(user1.address, amount);
+        await expect(TokenContract.userBuysTokens(user1.address, amount))
+            .to.emit(TokenContract, 'UserBoughtToken')
+            .withArgs(user1.address, amount);
 
         expect(await TokenContract.balanceOf(tokenAddress)).to.equal(premint - amount);
         expect(await TokenContract.balanceOf(user1.address)).to.equal(amount);
