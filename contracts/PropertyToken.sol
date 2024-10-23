@@ -7,8 +7,10 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 contract PropertyToken is ERC20 {
     
     error InsufficientTokenSupply();
-    event UserBoughtToken(address, uint256);
-    error Test1();
+    error InsufficientUserBalance();
+
+    event UserBoughtTokens(address, uint256);
+    event UserDepositedTokens(address, uint256);
 
     mapping(address => uint256) public depositedTokens;
 
@@ -20,11 +22,19 @@ contract PropertyToken is ERC20 {
         _mint(address(this), premint);
     }
 
-    function userBuysTokens(address recepient, uint256 amount) public {
+    function userBuysTokens(address userAddress, uint256 amount) public {
         if(balanceOf(address(this)) < amount)
             revert InsufficientTokenSupply();
 
-        _transfer(address(this), recepient, amount);
-        emit UserBoughtToken(recepient, amount);
+        _transfer(address(this), userAddress, amount);
+        emit UserBoughtTokens(userAddress, amount);
+    }
+
+    function userDepositsTokens(address userAddress, uint256 amount) public {
+        if(balanceOf(userAddress) - depositedTokens[userAddress] < amount)
+            revert InsufficientUserBalance();
+
+        depositedTokens[userAddress] += amount;
+        emit UserDepositedTokens(userAddress, amount);
     }
 }

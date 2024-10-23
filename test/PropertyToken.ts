@@ -30,7 +30,7 @@ describe('PropertyToken', () => {
 
         const amount = 100;
         await expect(TokenContract.userBuysTokens(user1.address, amount))
-            .to.emit(TokenContract, 'UserBoughtToken')
+            .to.emit(TokenContract, 'UserBoughtTokens')
             .withArgs(user1.address, amount);
 
         expect(await TokenContract.balanceOf(tokenAddress)).to.equal(premint - amount);
@@ -38,5 +38,23 @@ describe('PropertyToken', () => {
 
         await expect(TokenContract.userBuysTokens(user1.address, premint))
             .to.be.revertedWithCustomError(TokenContract, 'InsufficientTokenSupply');
+    });
+
+    it('Ensure that the `userDepositsTokens` function works correctly', async () => {
+        const { TokenContract, user1 } = await loadFixture(deployFreshContract);
+
+        const amountToBuy = 100;
+        const amountToDeposit = 70;
+        await expect(TokenContract.userDepositsTokens(user1.address, amountToDeposit))
+            .to.be.revertedWithCustomError(TokenContract, 'InsufficientUserBalance');
+
+        await TokenContract.userBuysTokens(user1.address, amountToBuy);
+
+        await expect(TokenContract.userDepositsTokens(user1.address, amountToDeposit))
+            .to.emit(TokenContract, 'UserDepositedTokens')
+            .withArgs(user1.address, amountToDeposit);
+
+        await expect(TokenContract.userDepositsTokens(user1.address, amountToDeposit))
+            .to.be.revertedWithCustomError(TokenContract, 'InsufficientUserBalance');
     });
 });
