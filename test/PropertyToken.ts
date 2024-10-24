@@ -6,14 +6,14 @@ describe('PropertyToken', () => {
 
     const deployFreshContract = async () => {
 
-        const [owner, user1, user2] = await hre.ethers.getSigners();
+        const [owner, user] = await hre.ethers.getSigners();
         const premint = 2000;
 
         const Token = await hre.ethers.getContractFactory('PropertyToken');
         const TokenContract = await Token.deploy('name', 'symbol', premint);
         const tokenAddress = TokenContract.target;
 
-        return { TokenContract, tokenAddress, owner, user1, user2, premint };
+        return { TokenContract, tokenAddress, owner, user, premint };
     }
 
     it('Ensure that the token contract address holds the full token balance, while the owner\'s balance is zero', async () => {
@@ -44,36 +44,61 @@ describe('PropertyToken', () => {
             .to.be.revertedWithCustomError(TokenContract, 'InsufficientTokenSupply');
     });
 
-    it('Ensure that the `userBuysTokens` function works correctly', async () => {
-        const { TokenContract, tokenAddress, user1, premint } = await loadFixture(deployFreshContract);
+    it('Ensure that the `BuysTokens` function works correctly', async () => {
+        const { TokenContract, tokenAddress, user, premint } = await loadFixture(deployFreshContract);
 
         const amount = 100;
-        await expect(TokenContract.userBuysTokens(user1.address, amount))
+        await expect(TokenContract.userBuysTokens(user.address, amount))
             .to.emit(TokenContract, 'UserBoughtTokens')
-            .withArgs(user1.address, amount);
+            .withArgs(user.address, amount);
 
         expect(await TokenContract.balanceOf(tokenAddress)).to.equal(premint - amount);
-        expect(await TokenContract.balanceOf(user1.address)).to.equal(amount);
+        expect(await TokenContract.balanceOf(user.address)).to.equal(amount);
 
-        await expect(TokenContract.userBuysTokens(user1.address, premint))
+        await expect(TokenContract.userBuysTokens(user.address, premint))
             .to.be.revertedWithCustomError(TokenContract, 'InsufficientTokenSupply');
     });
 
     it('Ensure that the `userDepositsTokens` function works correctly', async () => {
-        const { TokenContract, user1 } = await loadFixture(deployFreshContract);
+        const { TokenContract, user } = await loadFixture(deployFreshContract);
 
         const amountToBuy = 100;
         const amountToDeposit = 70;
-        await expect(TokenContract.userDepositsTokens(user1.address, amountToDeposit))
+
+        await expect(TokenContract.userDepositsTokens(user.address, amountToDeposit))
             .to.be.revertedWithCustomError(TokenContract, 'InsufficientUserBalance');
 
-        await TokenContract.userBuysTokens(user1.address, amountToBuy);
+        await TokenContract.userBuysTokens(user.address, amountToBuy);
 
-        await expect(TokenContract.userDepositsTokens(user1.address, amountToDeposit))
+        await expect(TokenContract.userDepositsTokens(user.address, amountToDeposit))
             .to.emit(TokenContract, 'UserDepositedTokens')
-            .withArgs(user1.address, amountToDeposit);
+            .withArgs(user.address, amountToDeposit);
 
-        await expect(TokenContract.userDepositsTokens(user1.address, amountToDeposit))
+        await expect(TokenContract.userDepositsTokens(user.address, amountToDeposit))
+            .to.be.revertedWithCustomError(TokenContract, 'InsufficientUserBalance');
+    });
+
+    it('Ensure that the `userRefundsTokens` function works correctly', async () => {
+        const { TokenContract, user } = await loadFixture(deployFreshContract);
+
+        const amountToBuy = 100;
+        const amountToDepositAndWithdraw = 70;
+
+        await expect(TokenContract.userRefundsTokens(user.address, amountToDepositAndWithdraw))
+            .to.be.revertedWithCustomError(TokenContract, 'InsufficientUserBalance');
+
+        await TokenContract.userBuysTokens(user.address, amountToBuy);
+
+        await expect(TokenContract.userRefundsTokens(user.address, amountToDepositAndWithdraw))
+            .to.be.revertedWithCustomError(TokenContract, 'InsufficientUserBalance');
+
+        await TokenContract.userDepositsTokens(user.address, amountToDepositAndWithdraw);
+
+        await expect(TokenContract.userRefundsTokens(user.address, amountToDepositAndWithdraw))
+            .to.emit(TokenContract, 'UserWithdrewTokens')
+            .withArgs(user.address, amountToDepositAndWithdraw);
+        
+        await expect(TokenContract.userRefundsTokens(user.address, amountToDepositAndWithdraw))
             .to.be.revertedWithCustomError(TokenContract, 'InsufficientUserBalance');
     });
 });

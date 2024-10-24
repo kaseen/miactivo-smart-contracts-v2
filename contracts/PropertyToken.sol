@@ -8,13 +8,14 @@ contract PropertyToken is ERC20, Ownable {
     
     event UserBoughtTokens(address, uint256);
     event UserDepositedTokens(address, uint256);
+    event UserWithdrewTokens(address, uint256);
     event TokenTotalAmountIncreased(uint256);
     event TokenTotalAmountDecreased(uint256);
 
     error InsufficientTokenSupply();
     error InsufficientUserBalance();
 
-    mapping(address => uint256) public depositedTokens;
+    mapping(address => uint256) private _depositedTokens;
 
     constructor(
         string memory name,
@@ -36,11 +37,21 @@ contract PropertyToken is ERC20, Ownable {
     }
 
     function userDepositsTokens(address userAddress, uint256 amount) public onlyOwner {
-        if(balanceOf(userAddress) - depositedTokens[userAddress] < amount)
+        if(balanceOf(userAddress) - _depositedTokens[userAddress] < amount)
             revert InsufficientUserBalance();
 
-        depositedTokens[userAddress] += amount;
+        _depositedTokens[userAddress] += amount;
         emit UserDepositedTokens(userAddress, amount);
+    }
+
+    function userRefundsTokens(address userAddress, uint256 amount) public onlyOwner {
+        if(_depositedTokens[userAddress] < amount)
+            revert InsufficientUserBalance();
+
+        _depositedTokens[userAddress] -= amount;
+        _transfer(userAddress, address(this), amount);
+
+        emit UserWithdrewTokens(userAddress, amount);
     }
 
     function increaseTokenCirculation(uint256 amount) public onlyOwner {
@@ -54,5 +65,9 @@ contract PropertyToken is ERC20, Ownable {
 
         _burn(address(this), amount);
         emit TokenTotalAmountDecreased(amount);
+    }
+
+    function getDepositedTokensForUser(address userAddress) public view returns (uint256) {
+        return _depositedTokens[userAddress];
     }
 }
