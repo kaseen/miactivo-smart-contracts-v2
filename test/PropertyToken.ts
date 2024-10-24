@@ -1,18 +1,16 @@
-import hre from 'hardhat';
-import { expect } from 'chai';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { expect } from 'chai';
+import hre from 'hardhat';
 
 describe('PropertyToken', () => {
 
     const deployFreshContract = async () => {
 
         const [owner, user1, user2] = await hre.ethers.getSigners();
-
         const premint = 2000;
 
         const Token = await hre.ethers.getContractFactory('PropertyToken');
         const TokenContract = await Token.deploy('name', 'symbol', premint);
-
         const tokenAddress = TokenContract.target;
 
         return { TokenContract, tokenAddress, owner, user1, user2, premint };
@@ -21,8 +19,29 @@ describe('PropertyToken', () => {
     it('Ensure that the token contract address holds the full token balance, while the owner\'s balance is zero', async () => {
         const { TokenContract, tokenAddress, owner, premint } = await loadFixture(deployFreshContract);
 
+        expect(await TokenContract.totalSupply()).to.equal(premint);
         expect(await TokenContract.balanceOf(tokenAddress)).to.equal(premint);
         expect(await TokenContract.balanceOf(owner.address)).to.equal(0);
+    });
+
+    it('Ensure that the increase and decrease token circulation functions work correctly', async () => {
+        const { TokenContract, premint } = await loadFixture(deployFreshContract);
+
+        const amount = 2500;
+        await expect(TokenContract.increaseTokenCirculation(amount))
+            .to.emit(TokenContract, 'TokenTotalAmountIncreased')
+            .withArgs(amount);
+
+        expect(await TokenContract.totalSupply()).to.equal(premint + amount);
+
+        await expect(TokenContract.decreaseTokenCirculation(amount))
+            .to.emit(TokenContract, 'TokenTotalAmountDecreased')
+            .withArgs(amount);
+
+        expect(await TokenContract.totalSupply()).to.equal(premint);
+
+        await expect(TokenContract.decreaseTokenCirculation(amount))
+            .to.be.revertedWithCustomError(TokenContract, 'InsufficientTokenSupply');
     });
 
     it('Ensure that the `userBuysTokens` function works correctly', async () => {
