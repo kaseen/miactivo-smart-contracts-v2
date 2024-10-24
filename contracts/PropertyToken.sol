@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
+import './Token.sol';
 
-contract PropertyToken is ERC20, Ownable {
+contract PropertyToken is Token {
     
     event UserBoughtTokens(address, uint256);
     event UserDepositedTokens(address, uint256);
     event UserWithdrewTokens(address, uint256);
-    event TokenTotalAmountIncreased(uint256);
-    event TokenTotalAmountDecreased(uint256);
 
-    error InsufficientTokenSupply();
     error InsufficientUserBalance();
 
     mapping(address => uint256) private _depositedTokens;
@@ -22,11 +18,7 @@ contract PropertyToken is ERC20, Ownable {
         string memory symbol,
         uint256 premint
     ) 
-    Ownable(msg.sender)
-    ERC20(name, symbol)
-    {
-        _mint(address(this), premint);
-    }
+    Token(name, symbol, premint){}
 
     function userBuysTokens(address userAddress, uint256 amount) public onlyOwner {
         if(balanceOf(address(this)) < amount)
@@ -52,19 +44,6 @@ contract PropertyToken is ERC20, Ownable {
         _transfer(userAddress, address(this), amount);
 
         emit UserWithdrewTokens(userAddress, amount);
-    }
-
-    function increaseTokenCirculation(uint256 amount) public onlyOwner {
-        _mint(address(this), amount);
-        emit TokenTotalAmountIncreased(amount);
-    }
-
-    function decreaseTokenCirculation(uint256 amount) public onlyOwner {
-        if(balanceOf(address(this)) < amount)
-            revert InsufficientTokenSupply();
-
-        _burn(address(this), amount);
-        emit TokenTotalAmountDecreased(amount);
     }
 
     function getDepositedTokensForUser(address userAddress) public view returns (uint256) {
